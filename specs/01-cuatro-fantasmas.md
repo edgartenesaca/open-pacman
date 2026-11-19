@@ -50,7 +50,7 @@
    - Añadir helper `pickBestDir(g, choices, targetX, targetY)` que elige la dirección cuya celda vecina minimiza la distancia Manhattan al objetivo (primer candidato en caso de empate).
    - Añadir `getGhostTarget(game, g)` con las 4 reglas de la tabla y el forzado de salida de la pen.
    - Actualizar `decideGhost` para usar `getGhostTarget` + `pickBestDir`; eliminar la rama aleatoria.
-   - Añadir a `canMove` el bloqueo de la puerta (`tile === 3`) para fantasmas que vienen desde abajo (`dir === 'up'`), de modo que no entren a la casa.
+   - Añadir a `canMove` el bloqueo de la puerta (`tile === 3`) para fantasmas que intentan bajar hacia la casa (`dir === 'down'`), de modo que no vuelvan a entrar.
 
 3. **Mapear colores por personalidad (`src/js/render.js`)**
    - Reemplazar el arreglo `GHOST_COLORS` indexado por un mapa por `kind` con los colores de la tabla.

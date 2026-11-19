@@ -13,6 +13,15 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
 
+// Casa de los fantasmas y su salida al pasillo superior (celda sobre la puerta).
+// Incluye la fila de la puerta (y = 12) para que no oscilen bajo ella.
+const PEN = { minX: 11, maxX: 16, minY: 12, maxY: 15 };
+const PEN_EXIT = { x: 13, y: 11 };
+const AMBUSH_LEAD = 4; // celdas que el emboscador se adelanta a Pacman
+const PATROL_LEAD = 2; // celdas de pivote para el flanqueo
+const SHY_RADIUS = 8;  // distancia a la que el timido deja de perseguir
+const SHY_CORNER = { x: 1, y: 29 };
+
 // Crea una partida nueva. Copia MAZE (pristino) a game.grid para poder comer
 // dots sin destruir el original, y reiniciar.
 function createGame() {
@@ -70,6 +79,8 @@ function canMove( grid, x, y, dir, actor ) {
   const ty = y + d.y;
   // Tunel: salir por un borde en la fila del tunel siempre es valido.
   if ( ty === TUNNEL_ROW && ( tx < 0 || tx >= grid[ 0 ].length ) ) return true;
+  // La puerta solo se cruza hacia arriba: los fantasmas salen, no vuelven a entrar.
+  if ( actor === 'ghost' && dir === 'down' && grid[ ty ] && grid[ ty ][ tx ] === 3 ) return false;
   return !isWall( grid, tx, ty, actor );
 }
 
@@ -110,35 +121,82 @@ function movePacman( game ) {
   wrapTunnel( p, width );
 }
 
+function manhattan( ax, ay, bx, by ) {
+  return Math.abs( ax - bx ) + Math.abs( ay - by );
+}
+
+// Celda 'distance' celdas delante de Pacman, en su direccion actual.
+// Puede caer fuera del laberinto: solo se usa como heuristica de distancia.
+function cellAhead( pacman, distance ) {
+  const d = DIRS[ pacman.dir ];
+  return {
+    x: Math.round( pacman.x ) + d.x * distance,
+    y: Math.round( pacman.y ) + d.y * distance,
+  };
+}
+
+function inPen( g ) {
+  const x = Math.round( g.x );
+  const y = Math.round( g.y );
+  return x >= PEN.minX && x <= PEN.maxX && y >= PEN.minY && y <= PEN.maxY;
+}
+
+// Celda que cada personalidad intenta alcanzar.
+function getGhostTarget( game, g ) {
+  // Dentro de la casa el unico objetivo es salir por la puerta.
+  if ( inPen( g ) ) return PEN_EXIT;
+
+  const p = game.pacman;
+  const px = Math.round( p.x );
+  const py = Math.round( p.y );
+
+  if ( g.kind === 'ambusher' ) return cellAhead( p, AMBUSH_LEAD );
+
+  if ( g.kind === 'patrol' ) {
+    const hunter = game.ghosts.find( ( o ) => o.kind === 'hunter' );
+    if ( !hunter ) return { x: px, y: py };
+    // Punto reflejado del hunter respecto al pivote delante de Pacman.
+    const pivot = cellAhead( p, PATROL_LEAD );
+    return {
+      x: pivot.x * 2 - Math.round( hunter.x ),
+      y: pivot.y * 2 - Math.round( hunter.y ),
+    };
+  }
+
+  const gx = Math.round( g.x );
+  const gy = Math.round( g.y );
+  if ( g.kind === 'shy' && manhattan( gx, gy, px, py ) <= SHY_RADIUS ) return SHY_CORNER;
+
+  // hunter (persecucion directa) y fallback para tipos desconocidos.
+  return { x: px, y: py };
+}
+
+// Direccion valida que mas acerca al fantasma a la celda objetivo.
+function pickBestDir( g, choices, targetX, targetY ) {
+  let best = choices[ 0 ];
+  let bestDist = Infinity;
+  for ( const dir of choices ) {
+    const d = DIRS[ dir ];
+    const dist = manhattan( g.x + d.x, g.y + d.y, targetX, targetY );
+    if ( dist < bestDist ) {
+      bestDist = dist;
+      best = dir;
+    }
+  }
+  return best;
+}
+
 function decideGhost( game, g ) {
   const grid = game.grid;
-  const p = game.pacman;
 
   const options = Object.keys( DIRS ).filter(
     ( dir ) => dir !== OPPOSITE[ g.dir ] && canMove( grid, g.x, g.y, dir, 'ghost' )
   );
   // Sin salida (callejon): permitir el giro de 180.
-  const choices = options.length ? options : [ '' + OPPOSITE[ g.dir ] ];
+  const choices = options.length ? options : [ OPPOSITE[ g.dir ] ];
 
-  if ( g.kind === 'hunter' ) {
-    const px = Math.round( p.x );
-    const py = Math.round( p.y );
-    let best = choices[ 0 ];
-    let bestDist = Infinity;
-    for ( const dir of choices ) {
-      const d = DIRS[ dir ];
-      const nx = g.x + d.x;
-      const ny = g.y + d.y;
-      const dist = Math.abs( nx - px ) + Math.abs( ny - py );
-      if ( dist < bestDist ) {
-        bestDist = dist;
-        best = dir;
-      }
-    }
-    g.dir = best;
-  } else {
-    g.dir = choices[ Math.floor( Math.random() * choices.length ) ];
-  }
+  const target = getGhostTarget( game, g );
+  g.dir = pickBestDir( g, choices, target.x, target.y );
 }
 
 function moveGhost( game, g ) {
