@@ -12,6 +12,7 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const GHOST_RELEASE_FRAMES = 60; // espera entre salidas (~1s a 60 fps)
 
 // Casa de los fantasmas y su salida al pasillo superior (celda sobre la puerta).
 // Incluye la fila de la puerta (y = 12) para que no oscilen bajo ella.
@@ -37,6 +38,7 @@ function createGame() {
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    clock: 0,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -222,6 +224,7 @@ function resetPositions( game ) {
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
+  game.clock = 0; // rearma la salida escalonada
   game.ghosts.forEach( ( g, i ) => {
     g.x = GHOST_STARTS[ i ].x;
     g.y = GHOST_STARTS[ i ].y;
@@ -234,8 +237,12 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  game.clock++;
   movePacman( game );
-  game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
+  game.ghosts.forEach( ( g, i ) => {
+    // Los que esperan su turno siguen quietos en la fila de salida.
+    if ( i * GHOST_RELEASE_FRAMES <= game.clock ) moveGhost( game, g );
+  } );
 
   for ( const g of game.ghosts ) {
     if ( collides( game.pacman, g ) ) {
