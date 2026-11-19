@@ -51,11 +51,11 @@ const MAZE = MAZE_STR.map( ( row ) => row.split( '' ).map( parseTile ) );
 
 const TUNNEL_ROW = 14;
 const PACMAN_START = { x: 13, y: 23 };
-// Cuatro personalidades: cada una arranca en una celda distinta de la casa.
+// Cuatro personalidades en fila horizontal; el orden define el turno de salida.
 const GHOST_STARTS = [
-  { x: 13, y: 13, kind: 'hunter' },   // persigue directo a Pac-Man
-  { x: 14, y: 13, kind: 'ambusher' }, // apunta delante de Pac-Man
-  { x: 12, y: 14, kind: 'patrol' },   // flanquea
+  { x: 12, y: 14, kind: 'hunter' },   // persigue directo a Pac-Man (sale primero)
+  { x: 13, y: 14, kind: 'ambusher' }, // apunta delante de Pac-Man
+  { x: 14, y: 14, kind: 'patrol' },   // flanquea
   { x: 15, y: 14, kind: 'shy' },      // se aleja cuando está cerca
 ];
 

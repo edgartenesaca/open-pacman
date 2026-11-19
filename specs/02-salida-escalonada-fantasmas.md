@@ -1,6 +1,6 @@
 # 02 — Salida escalonada de los fantasmas
 
-**Estado:** Borrador
+**Estado:** Aprobado
 **Objetivo:** Al iniciar la partida, los 4 fantasmas aparecen alineados horizontalmente y salen de la casa uno por uno, con aproximadamente un segundo entre cada salida.
 
 ## Contexto actual
