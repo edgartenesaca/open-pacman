@@ -1,6 +1,6 @@
 # 02 — Salida escalonada de los fantasmas
 
-**Estado:** Borrador
+**Estado:** Implementado
 **Objetivo:** Al iniciar la partida, los 4 fantasmas aparecen alineados horizontalmente y salen de la casa uno por uno, con aproximadamente un segundo entre cada salida.
 
 ## Contexto actual
@@ -46,9 +46,9 @@
 
 ## Criterios de aceptación
 
-- [ ] Al empezar, los 4 fantasmas se ven alineados en la misma fila horizontal, sin solaparse.
-- [ ] El `hunter` arranca de inmediato; cada uno de los otros tres empieza a moverse ~60 frames después del anterior.
-- [ ] Ningún fantasma se mueve antes de su turno; los que esperan quedan quietos en su celda.
-- [ ] Los 4 salen por la puerta y no vuelven a entrar (comportamiento del spec 01 intacto).
-- [ ] Al perder una vida, los fantasmas vuelven a la fila y repiten la salida escalonada.
-- [ ] Se mantiene la alineación de celdas, el cruce por el túnel y el tamaño del canvas.
+- [x] Al empezar, los 4 fantasmas se ven alineados en la misma fila horizontal, sin solaparse.
+- [x] El `hunter` arranca de inmediato; cada uno de los otros tres empieza a moverse ~60 frames después del anterior.
+- [x] Ningún fantasma se mueve antes de su turno; los que esperan quedan quietos en su celda.
+- [x] Los 4 salen por la puerta y no vuelven a entrar (comportamiento del spec 01 intacto).
+- [x] Al perder una vida, los fantasmas vuelven a la fila y repiten la salida escalonada.
+- [x] Se mantiene la alineación de celdas, el cruce por el túnel y el tamaño del canvas.
