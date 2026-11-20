@@ -66,14 +66,21 @@ function drawDoor( ctx, grid ) {
   ctx.stroke();
 }
 
+const DOT_RADIUS = 2.5;
+const POWER_PELLET_RADIUS = 6;
+
 function drawDots( ctx, grid ) {
   ctx.fillStyle = DOT_COLOR;
   for ( let y = 0; y < grid.length; y++ ) {
     for ( let x = 0; x < grid[ 0 ].length; x++ ) {
-      if ( grid[ y ][ x ] !== 2 ) continue;
+      const tile = grid[ y ][ x ];
+      let radius;
+      if ( tile === 2 ) radius = DOT_RADIUS;
+      else if ( tile === 4 ) radius = POWER_PELLET_RADIUS;
+      else continue;
       const { cx, cy } = cellCenter( x, y );
       ctx.beginPath();
-      ctx.arc( cx, cy, 2.5, 0, Math.PI * 2 );
+      ctx.arc( cx, cy, radius, 0, Math.PI * 2 );
       ctx.fill();
     }
   }
@@ -151,6 +158,7 @@ const GHOST_COLORS = {
   patrol: '#00ffff',
   shy: '#ffb852',
 };
+const FRIGHTENED_GHOST_COLOR = '#2121de';
 
 function draw( ctx, game, frame ) {
   const grid = game.grid;
@@ -164,7 +172,10 @@ function draw( ctx, game, frame ) {
   drawDoor( ctx, grid );
   drawDots( ctx, grid );
   drawPacman( ctx, game.pacman, frame );
-  game.ghosts.forEach( ( g ) => drawGhost( ctx, g, GHOST_COLORS[ g.kind ] || '#ff0000' ) );
+  const frightened = game.frightened > 0;
+  game.ghosts.forEach( ( g ) =>
+    drawGhost( ctx, g, frightened ? FRIGHTENED_GHOST_COLOR : GHOST_COLORS[ g.kind ] || '#ff0000' )
+  );
   drawHUD( ctx, game, W );
 }
 

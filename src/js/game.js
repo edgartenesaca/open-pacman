@@ -12,6 +12,12 @@ const OPPOSITE = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
 const PACMAN_SPEED = 0.125; // 1/8 celda/frame -> alinea cada 8 frames
 const GHOST_SPEED = 0.1;    // 1/10 celda/frame
+const GHOST_RELEASE_FRAMES = 60; // espera entre salidas (~1s a 60 fps)
+
+const DOT_SCORE = 10;
+const POWER_PELLET_SCORE = 50;
+const EATEN_GHOST_SCORE = 200;
+const FRIGHTENED_FRAMES = 360; // ~6s a 60 fps
 
 // Casa de los fantasmas y su salida al pasillo superior (celda sobre la puerta).
 // Incluye la fila de la puerta (y = 12) para que no oscilen bajo ella.
@@ -30,13 +36,15 @@ function createGame() {
   grid[ PACMAN_START.y ][ PACMAN_START.x ] = 0;
 
   let dots = 0;
-  for ( const row of grid ) for ( const v of row ) if ( v === 2 ) dots++;
+  for ( const row of grid ) for ( const v of row ) if ( v === 2 || v === 4 ) dots++;
 
   return {
     state: 'start',
     score: 0,
     lives: 3,
     dotsRemaining: dots,
+    clock: 0,
+    frightened: 0,
     grid,
     pacman: {
       x: PACMAN_START.x,
@@ -105,11 +113,14 @@ function movePacman( game ) {
       p.dir = p.nextDir;
       p.nextDir = null;
     }
-    // Comer dot.
-    if ( grid[ p.y ][ p.x ] === 2 ) {
+    // Comer dot o power pellet.
+    const tile = grid[ p.y ][ p.x ];
+    if ( tile === 2 || tile === 4 ) {
       grid[ p.y ][ p.x ] = 0;
-      game.score += 10;
+      game.score += tile === 4 ? POWER_PELLET_SCORE : DOT_SCORE;
       game.dotsRemaining--;
+      // El pellet activa el modo asustado; otro pellet lo reinicia.
+      if ( tile === 4 ) game.frightened = FRIGHTENED_FRAMES;
     }
     // Si no puede seguir, se detiene en la celda.
     if ( !canMove( grid, p.x, p.y, p.dir, 'pacman' ) ) return;
@@ -149,6 +160,11 @@ function getGhostTarget( game, g ) {
   const p = game.pacman;
   const px = Math.round( p.x );
   const py = Math.round( p.y );
+
+  // Asustado: huye al punto opuesto a Pacman respecto al centro del laberinto.
+  if ( game.frightened > 0 ) {
+    return { x: game.grid[ 0 ].length - 1 - px, y: game.grid.length - 1 - py };
+  }
 
   if ( g.kind === 'ambusher' ) return cellAhead( p, AMBUSH_LEAD );
 
@@ -216,17 +232,21 @@ function moveGhost( game, g ) {
   wrapTunnel( g, width );
 }
 
+function resetGhost( g, start ) {
+  g.x = start.x;
+  g.y = start.y;
+  g.dir = 'up';
+}
+
 function resetPositions( game ) {
   const p = game.pacman;
   p.x = PACMAN_START.x;
   p.y = PACMAN_START.y;
   p.dir = 'left';
   p.nextDir = null;
-  game.ghosts.forEach( ( g, i ) => {
-    g.x = GHOST_STARTS[ i ].x;
-    g.y = GHOST_STARTS[ i ].y;
-    g.dir = 'up';
-  } );
+  game.clock = 0; // rearma la salida escalonada
+  game.frightened = 0;
+  game.ghosts.forEach( ( g, i ) => resetGhost( g, GHOST_STARTS[ i ] ) );
 }
 
 function collides( a, b ) {
@@ -234,19 +254,29 @@ function collides( a, b ) {
 }
 
 function update( game ) {
+  game.clock++;
+  if ( game.frightened > 0 ) game.frightened--;
   movePacman( game );
-  game.ghosts.forEach( ( g ) => moveGhost( game, g ) );
+  game.ghosts.forEach( ( g, i ) => {
+    // Los que esperan su turno siguen quietos en la fila de salida.
+    if ( i * GHOST_RELEASE_FRAMES <= game.clock ) moveGhost( game, g );
+  } );
 
-  for ( const g of game.ghosts ) {
-    if ( collides( game.pacman, g ) ) {
-      game.lives--;
-      if ( game.lives <= 0 ) {
-        game.state = 'lost';
-        return;
-      }
-      resetPositions( game );
-      break;
+  for ( const [ i, g ] of game.ghosts.entries() ) {
+    if ( !collides( game.pacman, g ) ) continue;
+    // Asustado: se come al fantasma y vuelve a la casa.
+    if ( game.frightened > 0 ) {
+      game.score += EATEN_GHOST_SCORE;
+      resetGhost( g, GHOST_STARTS[ i ] );
+      continue;
     }
+    game.lives--;
+    if ( game.lives <= 0 ) {
+      game.state = 'lost';
+      return;
+    }
+    resetPositions( game );
+    break;
   }
 
   if ( game.dotsRemaining <= 0 ) game.state = 'won';
